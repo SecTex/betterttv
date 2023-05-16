@@ -1,0 +1,3 @@
+.bttv-hide-top-cheerer [data-test-selector='channel-leaderboard-container'] {
+  display: none !important;
+}

@@ -85,6 +85,8 @@ export const ChatFlags = {
   SUB_NOTICE: 1 << 4,
   COMMUNITY_HIGHLIGHTS: 1 << 5,
   CHAT_MESSAGE_HISTORY: 1 << 6,
+  SHOW_CHAT_HEADER: 1 << 7,
+  SHOW_TOP_CHEERER: 1 << 8,
 };
 
 export const ChannelPointsFlags = {
@@ -224,7 +226,9 @@ export const SettingDefaultValues = {
       ChatFlags.COMMUNITY_HIGHLIGHTS |
       ChatFlags.SUB_NOTICE |
       ChatFlags.VIEWER_GREETING |
-      ChatFlags.CHAT_MESSAGE_HISTORY,
+      ChatFlags.CHAT_MESSAGE_HISTORY |
+      ChatFlags.SHOW_CHAT_HEADER |
+      ChatFlags.SHOW_TOP_CHEERER,
     0,
   ],
   [SettingIds.AUTO_PLAY]: [

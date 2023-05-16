@@ -65,6 +65,22 @@ function ChatModule() {
               })}
             </p>
           </Checkbox>
+          <Checkbox key="showChatHeader" value={ChatFlags.SHOW_CHAT_HEADER}>
+            <p className={styles.heading}>{formatMessage({defaultMessage: 'Chat Header'})}</p>
+            <p className={styles.settingDescription}>
+              {formatMessage({
+                defaultMessage: 'Show the stream chat header.',
+              })}
+            </p>
+          </Checkbox>
+          <Checkbox key="showTopCheerer" value={ChatFlags.SHOW_TOP_CHEERER}>
+            <p className={styles.heading}>{formatMessage({defaultMessage: 'Top Cheerer'})}</p>
+            <p className={styles.settingDescription}>
+              {formatMessage({
+                defaultMessage: 'Show the top cheerer above chat window.',
+              })}
+            </p>
+          </Checkbox>
         </CheckboxGroup>
       </div>
     </Panel>
@@ -75,5 +91,16 @@ registerComponent(ChatModule, {
   settingId: SettingIds.CHAT,
   name: SETTING_NAME,
   category: CategoryTypes.CHAT,
-  keywords: ['bits', 'highlights', 'community', 'chat', 'replies', 'clips', 'subs', 'subscriptions'],
+  keywords: [
+    'bits',
+    'highlights',
+    'community',
+    'chat',
+    'replies',
+    'clips',
+    'subs',
+    'subscriptions',
+    'header',
+    'cheerer',
+  ],
 });
