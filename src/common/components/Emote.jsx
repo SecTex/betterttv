@@ -1,12 +1,13 @@
+import * as faLock from '@fortawesome/free-solid-svg-icons/faLock';
+import {Icon} from '@rsuite/icons';
 import classNames from 'classnames';
 import React, {useState} from 'react';
-import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
-import {faLock} from '@fortawesome/free-solid-svg-icons/faLock';
-import {createSrcSet, createSrc, DEFAULT_SIZES} from '../../utils/image.js';
-import styles from './Emote.module.css';
-import {hasFlag} from '../../utils/flags.js';
 import {EmoteTypeFlags, SettingIds} from '../../constants.js';
+import {hasFlag} from '../../utils/flags.js';
+import {createSrcSet, createSrc, DEFAULT_SIZES} from '../../utils/image.js';
 import useStorageState from '../hooks/StorageState.jsx';
+import styles from './Emote.module.css';
+import FontAwesomeSvgIcon from './FontAwesomeSvgIcon.jsx';
 
 export default function Emote({emote, className, locked, sizes = DEFAULT_SIZES, animating = false}) {
   const imageRef = React.useRef(null);
@@ -59,7 +60,7 @@ export default function Emote({emote, className, locked, sizes = DEFAULT_SIZES, 
     return (
       <div className={styles.lockedEmote}>
         {image}
-        <FontAwesomeIcon icon={faLock} className={styles.lock} />
+        <Icon as={FontAwesomeSvgIcon} fontAwesomeIcon={faLock} className={styles.lock} />
       </div>
     );
   }

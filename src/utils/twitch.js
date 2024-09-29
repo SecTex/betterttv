@@ -1,12 +1,12 @@
 import cookies from 'cookies-js';
 import gql from 'graphql-tag';
+import {getCurrentChannel, setCurrentChannel} from './channel.js';
 import debug from './debug.js';
 import {getCurrentUser, setCurrentUser} from './user.js';
-import {getCurrentChannel, setCurrentChannel} from './channel.js';
 
 const REACT_ROOT = '#root';
 const CHAT_CONTAINER = 'section[data-test-selector="chat-room-component-layout"]';
-const VOD_CHAT_CONTAINER = '.qa-vod-chat,.va-vod-chat';
+const VOD_CHAT_CONTAINER = '.qa-vod-chat,.va-vod-chat,.video-chat';
 const CHAT_LIST = '.chat-list,.chat-list--default,.chat-list--other';
 const VOD_CHAT_LIST = '.chat-shell';
 const PLAYER = 'div[data-a-target="player-overlay-click-handler"],.video-player';
@@ -15,6 +15,7 @@ const CHAT_MESSAGE_SELECTOR = '.chat-line__message';
 const CHAT_INPUT = 'textarea[data-a-target="chat-input"], div[data-a-target="chat-input"]';
 const CHAT_WYSIWYG_INPUT_EDITOR = '.chat-wysiwyg-input__editor';
 const COMMUNITY_HIGHLIGHT = '.community-highlight';
+const STREAM_CHAT = '.stream-chat';
 
 const USER_PROFILE_IMAGE_GQL_QUERY = gql`
   query BTTVGetUserProfilePicture($userId: ID!) {
@@ -30,7 +31,7 @@ let twitchWebpackRequire;
 
 export function getReactInstance(element) {
   for (const key in element) {
-    if (key.startsWith('__reactInternalInstance$')) {
+    if (key.startsWith('__reactInternalInstance$') || key.startsWith('__reactFiber$')) {
       return element[key];
     }
   }
@@ -40,7 +41,7 @@ export function getReactInstance(element) {
 
 function getReactRoot(element) {
   for (const key in element) {
-    if (key.startsWith('_reactRootContainer')) {
+    if (key.startsWith('_reactRootContainer') || key.startsWith('__reactContainer$')) {
       return element[key];
     }
   }
@@ -263,8 +264,9 @@ export default {
   getConnectStore() {
     let store;
     try {
+      const reactRoot = getReactRoot(document.querySelector(REACT_ROOT));
       const node = searchReactChildren(
-        getReactRoot(document.querySelector(REACT_ROOT))._internalRoot.current,
+        reactRoot?._internalRoot?.current ?? reactRoot,
         (n) => n.pendingProps && n.pendingProps.value && n.pendingProps.value.store
       );
       store = node.pendingProps.value.store;
@@ -276,8 +278,9 @@ export default {
   getApolloClient() {
     let client;
     try {
+      const reactRoot = getReactRoot(document.querySelector(REACT_ROOT));
       const node = searchReactChildren(
-        getReactRoot(document.querySelector(REACT_ROOT))._internalRoot.current,
+        reactRoot?._internalRoot?.current ?? reactRoot,
         (n) => n.pendingProps?.value?.client
       );
       client = node.pendingProps.value.client;
@@ -332,7 +335,7 @@ export default {
       const node = searchReactParents(
         getReactInstance(document.querySelector(CHAT_CONTAINER)),
         (n) => n.stateNode?.props?.chatConnectionAPI,
-        25
+        30
       );
       chatContentComponent = node.stateNode;
     } catch (_) {}
@@ -344,8 +347,9 @@ export default {
     if (chatClient) return chatClient;
 
     try {
+      const reactRoot = getReactRoot(document.querySelector(REACT_ROOT));
       const node = searchReactChildren(
-        getReactRoot(document.querySelector(REACT_ROOT))._internalRoot.current,
+        reactRoot?._internalRoot?.current ?? reactRoot,
         (n) => n.stateNode && n.stateNode.join && n.stateNode.client,
         1000
       );
@@ -414,7 +418,7 @@ export default {
       const node = searchReactParents(
         getReactInstance(document.querySelector(CHAT_CONTAINER)),
         (n) => n.stateNode?.props?.emoteSetsData?.emoteMap,
-        25
+        30
       );
       currentEmotes = node.stateNode.props.emoteSetsData;
     } catch (_) {}
@@ -623,11 +627,13 @@ export default {
     try {
       chatInputEditor = searchReactParents(
         getReactInstance(element || document.querySelector(CHAT_INPUT)),
-        (n) => n.stateNode?.state?.slateEditor != null
+        // TODO: remove slateEditor check after legacy slate is gone
+        (n) => n.memoizedProps?.value?.editor != null || n.stateNode?.state?.slateEditor != null
       );
     } catch (_) {}
 
-    return chatInputEditor?.stateNode;
+    // TODO: remove slateEditor after legacy slate is gone
+    return chatInputEditor?.memoizedProps?.value?.editor ?? chatInputEditor?.stateNode?.state?.slateEditor;
   },
 
   getChatInputValue() {
@@ -684,9 +690,17 @@ export default {
 
     if (shouldFocus) {
       const chatInputEditor = this.getChatInputEditor(element);
-      if (chatInputEditor != null) {
+
+      // TODO: remove after legacy slate is gone
+      if (chatInputEditor != null && 'setSelectionRange' in chatInputEditor) {
         chatInputEditor.focus();
         chatInputEditor.setSelectionRange(text.length);
+        // setSelection seems missing now, so we can't set selection
+      } else if (chatInputEditor != null && 'setSelection' in chatInputEditor) {
+        element.focus();
+        chatInputEditor.setSelection(text.length);
+      } else {
+        element.focus();
       }
     }
   },
@@ -706,7 +720,7 @@ export default {
       return SelectionTypes.END;
     }
 
-    const chatInputEditor = this.getChatInputEditor(element)?.state?.slateEditor;
+    const chatInputEditor = this.getChatInputEditor(element);
     if (chatInputEditor == null || chatInputEditor.selection == null) {
       return SelectionTypes.MIDDLE;
     }
@@ -781,11 +795,43 @@ export default {
     return privateCalloutEvent;
   },
 
-  graphqlQuery(query, variables) {
+  graphqlQuery(query, variables, options = {}) {
     const client = this.getApolloClient();
     if (client == null) {
       return Promise.reject(new Error('unable to locate Twitch Apollo client'));
     }
-    return client.query({query, variables});
+    return client.query({query, variables, ...options});
+  },
+
+  graphqlMutation(mutation, variables) {
+    const client = this.getApolloClient();
+    if (client == null) {
+      return Promise.reject(new Error('unable to locate Twitch Apollo client'));
+    }
+    return client.mutate({mutation, variables});
+  },
+
+  getChatCommandStore() {
+    let context;
+    try {
+      const node = searchReactParents(
+        getReactInstance(document.querySelector(STREAM_CHAT)),
+        (n) => n.pendingProps?.value?.getCommands != null,
+        25
+      );
+      context = node.pendingProps.value;
+    } catch (_) {}
+    return context;
+  },
+
+  getUserFromPinnedChat(node) {
+    let user;
+
+    try {
+      const reactNode = searchReactParents(getReactInstance(node), (n) => n?.pendingProps?.message?.pinnedBy != null);
+      user = reactNode.pendingProps.message.pinnedBy;
+    } catch (_) {}
+
+    return user;
   },
 };

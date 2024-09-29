@@ -1,21 +1,19 @@
 import React from 'react';
 import {createRoot} from 'react-dom/client';
-import settings from '../../../settings.js';
-import {EmoteProviders, SettingIds} from '../../../constants.js';
-import EmoteMenuButton from '../components/LegacyButton.jsx';
+import {EmoteMenuTypes, EmoteProviders, SettingIds} from '../../../constants.js';
 import domObserver from '../../../observers/dom.js';
-import styles from './EmoteMenu.module.css';
+import settings from '../../../settings.js';
 import {getCurrentUser} from '../../../utils/user.js';
-import watcher from '../../../watcher.js';
 import {createYoutubeEmojiNode} from '../../../utils/youtube.js';
+import watcher from '../../../watcher.js';
+import EmoteMenuButton from '../components/Button.jsx';
+import styles from './EmoteMenu.module.css';
 
 const CHAT_TEXT_AREA = 'div#input[contenteditable]';
 
-// For legacy button
-const LEGACY_BTTV_EMOTE_PICKER_BUTTON_CONTAINER_SELECTOR =
-  'div[data-a-target="legacy-bttv-emote-picker-button-container"]';
+const BTTV_EMOTE_PICKER_BUTTON_CONTAINER_ID = 'bttv-emote-picker-button-container';
 const CHAT_BUTTON_CONTAINER_SELECTOR = '#picker-buttons';
-const NATIVE_EMOTE_MENU_BUTTON_CONTAINER_SELECTOR = '.yt-live-chat-icon-toggle-button-renderer';
+const NATIVE_EMOTE_MENU_BUTTON_CONTAINER_SELECTOR = '#emoji-picker-button';
 
 class SafeEmoteMenuButton extends React.Component {
   componentDidMount() {
@@ -47,29 +45,29 @@ export default class EmoteMenuModule {
         return;
       }
 
-      this.loadLegacyButton();
+      this.loadButton();
     });
-    watcher.on('load.youtube', () => this.loadLegacyButton());
-    settings.on(`changed.${SettingIds.EMOTE_MENU}`, () => this.loadLegacyButton());
+    watcher.on('load.youtube', () => this.loadButton());
+    settings.on(`changed.${SettingIds.EMOTE_MENU}`, () => this.loadButton());
   }
 
-  loadLegacyButton() {
+  loadButton() {
     if (getCurrentUser() == null) {
       return;
     }
 
-    const legacyContainer = document.querySelector(LEGACY_BTTV_EMOTE_PICKER_BUTTON_CONTAINER_SELECTOR);
-    const emoteMenuEnabled = settings.get(SettingIds.EMOTE_MENU);
+    const container = document.getElementById(BTTV_EMOTE_PICKER_BUTTON_CONTAINER_ID);
+    const emoteMenuValue = settings.get(SettingIds.EMOTE_MENU);
+    const emoteMenuEnabled = emoteMenuValue !== EmoteMenuTypes.NONE;
 
-    // TODO: take into account emote menu setting in the future
-    if (legacyContainer == null && emoteMenuEnabled) {
-      const nativeButtonContainer = document.querySelector(CHAT_BUTTON_CONTAINER_SELECTOR);
-      if (nativeButtonContainer == null) {
+    if (container == null && emoteMenuEnabled) {
+      const nativeButton = document.querySelector(NATIVE_EMOTE_MENU_BUTTON_CONTAINER_SELECTOR);
+      if (nativeButton == null) {
         return;
       }
       const buttonContainer = document.createElement('div');
-      buttonContainer.setAttribute('data-a-target', 'legacy-bttv-emote-picker-button-container');
-      nativeButtonContainer.insertBefore(buttonContainer, nativeButtonContainer.firstChild);
+      buttonContainer.setAttribute('id', BTTV_EMOTE_PICKER_BUTTON_CONTAINER_ID);
+      nativeButton.parentElement.insertBefore(buttonContainer, nativeButton);
 
       if (mountedRoot != null) {
         mountedRoot.unmount();
@@ -102,9 +100,9 @@ export default class EmoteMenuModule {
       nativeContainer.classList.toggle(styles.hideEmoteMenuButton, visible);
     }
 
-    const legacyContainer = document.querySelector(LEGACY_BTTV_EMOTE_PICKER_BUTTON_CONTAINER_SELECTOR);
-    if (legacyContainer != null) {
-      legacyContainer.classList.toggle(styles.hideEmoteMenuButton, !visible);
+    const container = document.getElementById(BTTV_EMOTE_PICKER_BUTTON_CONTAINER_ID);
+    if (container != null) {
+      container.classList.toggle(styles.hideEmoteMenuButton, !visible);
     }
   }
 

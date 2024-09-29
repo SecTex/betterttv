@@ -1,12 +1,12 @@
-import socketClient, {EventNames} from '../../socket-client.js';
-import watcher from '../../watcher.js';
-import cdn from '../../utils/cdn.js';
-import AbstractEmotes from './abstract-emotes.js';
-import Emote from './emote.js';
-import {getCurrentUser} from '../../utils/user.js';
-import {getCurrentChannel} from '../../utils/channel.js';
 import {EmoteCategories, EmoteProviders} from '../../constants.js';
 import formatMessage from '../../i18n/index.js';
+import socketClient, {EventNames} from '../../socket-client.js';
+import cdn from '../../utils/cdn.js';
+import {getCurrentChannel} from '../../utils/channel.js';
+import {getCurrentUser} from '../../utils/user.js';
+import watcher from '../../watcher.js';
+import AbstractEmotes from './abstract-emotes.js';
+import Emote from './emote.js';
 
 const category = {
   id: EmoteCategories.BETTERTTV_PERSONAL,
@@ -25,9 +25,11 @@ class PersonalEmotes extends AbstractEmotes {
     watcher.on('load.youtube', () => this.joinChannel());
     watcher.on('load.user', () => this.broadcastMe());
     watcher.on('conversation.new', (threadId) => this.joinConversation(threadId));
-    watcher.on('conversation.message', (threadId, el, msgObject) => this.broadcastMeConversation(threadId, msgObject));
-    watcher.on('youtube.message', (element, {data}) => {
-      if (data.authorExternalChannelId !== getCurrentUser()?.id) {
+    watcher.on('conversation.message', (threadId, element, messageObj) =>
+      this.broadcastMeConversation(threadId, messageObj)
+    );
+    watcher.on('youtube.message', (element, messageObj) => {
+      if (messageObj.authorExternalChannelId !== getCurrentUser()?.id) {
         return;
       }
       this.broadcastMe();

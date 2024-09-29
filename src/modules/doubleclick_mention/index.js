@@ -1,8 +1,8 @@
 import {off, on} from 'delegated-events';
-import watcher from '../../watcher.js';
-import twitch from '../../utils/twitch.js';
 import {PlatformTypes} from '../../constants.js';
 import {loadModuleForPlatforms} from '../../utils/modules.js';
+import twitch from '../../utils/twitch.js';
+import watcher from '../../watcher.js';
 
 const CHAT_ROOM_SELECTOR = '.chat-list,.chat-list--default,.chat-list--other';
 const CHAT_LINE_SELECTOR = '.chat-line__message';
@@ -26,7 +26,11 @@ function handleDoubleClick(e) {
   let user = e.target.innerText ? e.target.innerText.replace('@', '') : '';
   const messageObj = twitch.getChatMessageObject(e.target.closest(CHAT_LINE_SELECTOR));
   if (messageObj != null && e.target.getAttribute('data-a-target') !== 'chat-message-mention') {
-    user = messageObj.user.userLogin;
+    if (messageObj.user.userDisplayName?.toLowerCase() === messageObj.user.userLogin) {
+      user = messageObj.user.userDisplayName;
+    } else {
+      user = messageObj.user.userLogin;
+    }
   }
   const chatInputValue = twitch.getChatInputValue();
   if (chatInputValue == null) return;

@@ -1,53 +1,117 @@
-import watcher from '../../watcher.js';
-import settings from '../../settings.js';
-import domObserver from '../../observers/dom.js';
 import {PlatformTypes, SettingIds, SidebarFlags} from '../../constants.js';
+import domObserver from '../../observers/dom.js';
+import settings from '../../settings.js';
 import {hasFlag} from '../../utils/flags.js';
 import {loadModuleForPlatforms} from '../../utils/modules.js';
 import twitch from '../../utils/twitch.js';
+import watcher from '../../watcher.js';
+import styles from './styles.module.css';
 
-let removeFeaturedChannelsListener;
-let removeOfflineFollowedChannelsListener;
+const sidebarSectionSelector = '.side-nav-section';
+const offlineChannelSelector = '.side-nav-card';
+
+let offlineChannelObserverRemover = null;
+let sidebarSectionObserverRemover = null;
+
+function toggleSidebarSectionClass(node, flags) {
+  const sidebarSection = twitch.getSidebarSection(node);
+  if (sidebarSection == null) {
+    return;
+  }
+
+  const setting = flags ?? settings.get(SettingIds.SIDEBAR);
+  switch (sidebarSection.type) {
+    case 'RECENTLY_VISITED_SECTION': {
+      node.classList.toggle(styles.hide, !hasFlag(setting, SidebarFlags.RECENTLY_WATCHED_CHANNELS));
+      break;
+    }
+    case 'RECOMMENDED_SECTION': {
+      node.classList.toggle(styles.hide, !hasFlag(setting, SidebarFlags.RECOMMENDED_CHANNELS));
+      break;
+    }
+    case 'SIMILAR_SECTION': {
+      node.classList.toggle(styles.hide, !hasFlag(setting, SidebarFlags.SIMILAR_CHANNELS));
+      break;
+    }
+    default: {
+      break;
+    }
+  }
+}
 
 class HideSidebarElementsModule {
   constructor() {
     settings.on(`changed.${SettingIds.SIDEBAR}`, () => {
-      this.toggleFeaturedChannels();
+      this.loadHideOfflineChannels();
+      this.loadHideSidebarElements();
       this.toggleAutoExpandChannels();
-      this.toggleOfflineFollowedChannels();
+      this.loadHideStories();
     });
     watcher.on('load', () => {
-      this.toggleFeaturedChannels();
+      this.loadHideOfflineChannels();
+      this.loadHideSidebarElements();
       this.toggleAutoExpandChannels();
-      this.toggleOfflineFollowedChannels();
+      this.loadHideStories();
     });
   }
 
-  toggleFeaturedChannels() {
-    if (!hasFlag(settings.get(SettingIds.SIDEBAR), SidebarFlags.FEATURED_CHANNELS)) {
-      if (removeFeaturedChannelsListener) return;
+  loadHideSidebarElements() {
+    const setting = settings.get(SettingIds.SIDEBAR);
+    const hideRecentlyWatched = !hasFlag(setting, SidebarFlags.RECENTLY_WATCHED_CHANNELS);
+    const hideRecommended = !hasFlag(setting, SidebarFlags.RECOMMENDED_CHANNELS);
+    const hideSimilar = !hasFlag(setting, SidebarFlags.SIMILAR_CHANNELS);
+    const enabled = hideRecentlyWatched || hideRecommended || hideSimilar;
 
-      removeFeaturedChannelsListener = domObserver.on(
-        '.side-nav-section a[data-test-selector="recommended-channel"], .side-nav-section a[data-test-selector="similarity-channel"], .side-nav-section a[data-test-selector="popular-channel"], .side-nav-card[data-test-selector="side-nav-card-collapsed"]',
-        (node, isConnected) => {
-          if (!isConnected) return;
-
-          const sidebarSection = twitch.getSidebarSection(node);
-          if (!['SIMILAR_SECTION', 'RECOMMENDED_SECTION', 'POPULAR_SECTION'].includes(sidebarSection?.type)) {
-            return;
-          }
-          node.classList.add('bttv-hide-featured-channels');
-        },
-        {useParentNode: true}
-      );
-      return;
+    if (enabled && sidebarSectionObserverRemover == null) {
+      sidebarSectionObserverRemover = domObserver.on(sidebarSectionSelector, (node, isConnected) => {
+        if (!isConnected) {
+          return;
+        }
+        toggleSidebarSectionClass(node, setting);
+      });
     }
 
-    if (!removeFeaturedChannelsListener) return;
+    if (!enabled && sidebarSectionObserverRemover != null) {
+      sidebarSectionObserverRemover();
+      sidebarSectionObserverRemover = null;
+    }
 
-    removeFeaturedChannelsListener();
-    removeFeaturedChannelsListener = undefined;
-    document.querySelector('.side-nav-section')?.classList.add('bttv-hide-featured-channels');
+    const sidebarSections = document.querySelectorAll(sidebarSectionSelector);
+    for (const section of sidebarSections) {
+      toggleSidebarSectionClass(section, setting);
+    }
+  }
+
+  loadHideStories() {
+    const setting = settings.get(SettingIds.SIDEBAR);
+    const enabled = hasFlag(setting, SidebarFlags.STORIES);
+    document.body.classList.toggle(styles.hideStories, !enabled);
+  }
+
+  loadHideOfflineChannels() {
+    const setting = settings.get(SettingIds.SIDEBAR);
+    const shouldHideOfflineChannels = !hasFlag(setting, SidebarFlags.OFFLINE_FOLLOWED_CHANNELS);
+
+    if (shouldHideOfflineChannels && offlineChannelObserverRemover == null) {
+      offlineChannelObserverRemover = domObserver.on(offlineChannelSelector, (node, isConnected) => {
+        if (!isConnected) {
+          return;
+        }
+        const offlineAvatars = node.querySelectorAll('.side-nav-card__avatar--offline');
+        for (const offlineAvatar of offlineAvatars) {
+          offlineAvatar.closest('.side-nav-card')?.classList.add(styles.hideOfflineChannel);
+        }
+      });
+    }
+
+    if (!shouldHideOfflineChannels && offlineChannelObserverRemover != null) {
+      offlineChannelObserverRemover();
+      offlineChannelObserverRemover = null;
+      const nodes = document.getElementsByClassName(styles.hideOfflineChannel);
+      for (const node of nodes) {
+        node.classList.remove(styles.hideOfflineChannel);
+      }
+    }
   }
 
   toggleAutoExpandChannels() {
@@ -57,28 +121,6 @@ class HideSidebarElementsModule {
       if (firstChannelLink == null) return;
       document.querySelector('.side-nav button[data-a-target="side-nav-show-more-button"]')?.click();
     }, 1000);
-  }
-
-  toggleOfflineFollowedChannels() {
-    if (!hasFlag(settings.get(SettingIds.SIDEBAR), SidebarFlags.OFFLINE_FOLLOWED_CHANNELS)) {
-      if (removeOfflineFollowedChannelsListener) return;
-
-      removeOfflineFollowedChannelsListener = domObserver.on(
-        '.side-nav-card .side-nav-card__avatar--offline',
-        (node, isConnected) => {
-          if (!isConnected) return;
-          node.classList.add('bttv-hide-followed-offline');
-        },
-        {useParentNode: true}
-      );
-      return;
-    }
-
-    if (!removeOfflineFollowedChannelsListener) return;
-
-    removeOfflineFollowedChannelsListener();
-    removeOfflineFollowedChannelsListener = undefined;
-    document.querySelector('.side-nav-card')?.classList.remove('bttv-hide-followed-offline');
   }
 }
 

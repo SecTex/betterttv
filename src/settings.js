@@ -1,7 +1,16 @@
-import SafeEventEmitter from './utils/safe-event-emitter.js';
+import semver from 'semver';
+import {
+  EXT_VER,
+  SettingIds,
+  FlagSettings,
+  SettingDefaultValues,
+  ChatFlags,
+  EmoteMenuTypes,
+  SidebarFlags,
+} from './constants.js';
 import storage from './storage.js';
-import {SettingIds, FlagSettings, SettingDefaultValues, ChatFlags} from './constants.js';
-import {getChangedFlags, setFlag} from './utils/flags.js';
+import {getChangedFlags, hasFlag, setFlag} from './utils/flags.js';
+import SafeEventEmitter from './utils/safe-event-emitter.js';
 
 export const SETTINGS_STORAGE_KEY = 'settings';
 let settings = {};
@@ -23,11 +32,11 @@ class Settings extends SafeEventEmitter {
     settings = {...defaultSettings, ...oldSettings};
 
     if (oldSettings == null || (oldSettings != null && oldSettings.version == null)) {
-      settings = {...settings, version: process.env.EXT_VER};
+      settings = {...settings, version: EXT_VER};
       storage.set(SETTINGS_STORAGE_KEY, settings);
     }
 
-    this.upgradeFlags(settings.version);
+    this.upgrade(settings.version);
   }
 
   get(id) {
@@ -60,7 +69,11 @@ class Settings extends SafeEventEmitter {
       storageValue = new TempValue(storageValue, settings[id]);
     }
 
-    const updatedSettings = {...settings, [id]: storageValue, version: process.env.EXT_VER};
+    const updatedSettings = {...settings, [id]: storageValue, version: EXT_VER};
+    if (storageValue == null) {
+      delete updatedSettings[id];
+    }
+
     settings = updatedSettings;
 
     const storageSettings = {...updatedSettings};
@@ -77,7 +90,24 @@ class Settings extends SafeEventEmitter {
     return value;
   }
 
-  upgradeFlags(version) {
+  upgrade(version) {
+    if (semver.lt(version, '7.5.5')) {
+      // now storing emote menu as an enum rather than a boolean
+      const oldEmoteMenuValue = this.get(SettingIds.LEGACY_EMOTE_MENU);
+      if (oldEmoteMenuValue != null) {
+        const emoteMenuValue = oldEmoteMenuValue ? EmoteMenuTypes.LEGACY_ENABLED : EmoteMenuTypes.NONE;
+        this.set(SettingIds.EMOTE_MENU, emoteMenuValue);
+        this.set(SettingIds.LEGACY_EMOTE_MENU, null);
+      }
+
+      // upgrade sidebar flags: split featured channels into one option per section
+      const oldSidebarValue = this.get(SettingIds.SIDEBAR);
+      if (oldSidebarValue != null && !hasFlag(oldSidebarValue, SidebarFlags.RECOMMENDED_CHANNELS)) {
+        const value = setFlag(oldSidebarValue, SidebarFlags.SIMILAR_CHANNELS, false);
+        this.set(SettingIds.SIDEBAR, value);
+      }
+    }
+
     for (const flagSettingId of FlagSettings) {
       const defaultValue = SettingDefaultValues[flagSettingId];
       const defaultFlags = defaultValue[0];
@@ -99,22 +129,8 @@ class Settings extends SafeEventEmitter {
         this.set(flagSettingId, [oldValue, getChangedFlags(inferredDefaultFlags, oldValue)]);
       }
 
-      let [oldFlags, oldChangedBits] = settings[flagSettingId];
-
-      // fix flags which were improperly defaulted in 7.4.11
-      if (
-        version === '7.4.11' &&
-        ((oldFlags === 0 && oldChangedBits === defaultFlags) ||
-          (flagSettingId === SettingIds.CHAT &&
-            oldFlags === ChatFlags.CHAT_MESSAGE_HISTORY &&
-            (oldChangedBits === defaultFlags || oldChangedBits === inferredDefaultFlags)))
-      ) {
-        oldFlags = defaultFlags;
-        oldChangedBits = 0;
-        this.set(flagSettingId, defaultValue);
-      }
-
       // upgrade flags where default bits changed
+      const [oldFlags, oldChangedBits] = settings[flagSettingId];
       const flagsToAdd = setFlag(defaultFlags, oldChangedBits, false);
       if (flagsToAdd > 0) {
         this.set(flagSettingId, setFlag(oldFlags, flagsToAdd, true));

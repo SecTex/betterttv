@@ -1,15 +1,9 @@
 .container {
-  display: inline-flex !important;
-  position: relative !important;
+  display: inline-block !important;
+  vertical-align: bottom !important;
 }
 
-.hideDefaultEmoteMenuButton {
-  button[data-a-target='emote-picker-button'] {
-    display: none !important;
-  }
-}
-
-.hideEmoteMenuButton {
+.hideEmoteMenuButtonContainer button[data-a-target='emote-picker-button'] {
   display: none;
 }
 

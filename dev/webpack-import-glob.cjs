@@ -14,7 +14,8 @@ function replacer(match, quote, filename) {
         try {
           await import(${quote}${normalizePath(file)}${quote});
         } catch (e) {
-          debug.error('Failed to import ${file}', e.stack);
+          Sentry.captureException(e);
+          debug.error('Failed to import ${normalizePath(file)}', e.stack);
         }
       `
     )

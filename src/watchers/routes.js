@@ -1,7 +1,7 @@
-import twitch from '../utils/twitch.js';
-import debug from '../utils/debug.js';
 import domObserver from '../observers/dom.js';
 import historyObserver from '../observers/history.js';
+import debug from '../utils/debug.js';
+import twitch from '../utils/twitch.js';
 
 let watcher;
 let currentPath = '';
@@ -10,12 +10,12 @@ let currentChatReference;
 let currentChatChannelId;
 
 const loadPredicates = {
-  following: () => document.querySelector('ul[role="tablist"] div[data-test-selector="ACTIVE_TAB_INDICATOR"]') != null,
+  following: () => document.querySelector('ul[role="tablist"] a[aria-selected="true"]') != null,
   channel: () => {
     const href =
-      document.querySelector('.channel-header__user-avatar img')?.getAttribute('src') ||
+      document.querySelector('#live-channel-stream-information .tw-image-avatar')?.getAttribute('src') ||
       document.querySelector('h3[data-test-selector="side-nav-channel-info__name_link"] a')?.getAttribute('href') ||
-      document.querySelector('.channel-info-content a figure img')?.getAttribute('src');
+      document.querySelector('#offline-channel-main-content .tw-image-avatar')?.getAttribute('src');
     return !!href && !!twitch.updateCurrentChannel();
   },
   chat: (context) => {
@@ -48,7 +48,7 @@ const loadPredicates = {
   },
   player: () => !!twitch.getCurrentPlayer(),
   vod: () => !!twitch.updateCurrentChannel(),
-  homepage: () => document.querySelector('.front-page-carousel .video-player__container') != null,
+  homepage: () => document.querySelector('.front-page-carousel .video-player__container .player-controls') != null,
 };
 
 const routes = {

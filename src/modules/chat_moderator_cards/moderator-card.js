@@ -1,11 +1,11 @@
-import {DateTime} from 'luxon';
 import gql from 'graphql-tag';
-import nicknames from '../chat_nicknames/index.js';
-import twitch from '../../utils/twitch.js';
-import keyCodes from '../../utils/keycodes.js';
-import {getCurrentUser} from '../../utils/user.js';
-import {getCurrentChannel} from '../../utils/channel.js';
+import {DateTime} from 'luxon';
 import formatMessage from '../../i18n/index.js';
+import {getCurrentChannel} from '../../utils/channel.js';
+import keyCodes from '../../utils/keycodes.js';
+import twitch from '../../utils/twitch.js';
+import {getCurrentUser} from '../../utils/user.js';
+import nicknames from '../chat_nicknames/index.js';
 
 const Commands = {
   BAN: '/ban',
@@ -85,7 +85,7 @@ const Icons = {
 const MODERATOR_CARD_DISPLAY_NAME_SELECTOR = '.viewer-card-header__display-name h4';
 const MODERATOR_CARD_OVERLAY_SELECTOR = '.viewer-card-header__overlay';
 const MODERATOR_CARD_ACTIONS_SELECTOR =
-  'button svg path[d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm8 6a6 6 0 01-4.904-9.458l8.362 8.362A5.972 5.972 0 0110 16zm4.878-2.505a6 6 0 00-8.372-8.372l8.372 8.372z"]';
+  'button svg path[d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0zm-2 0a6 6 0 1 1-12 0 6 6 0 0 1 12 0z"]';
 
 function createModeratorActionButton(command, duration, tooltipText, buttonText) {
   const container = document.createElement('div');

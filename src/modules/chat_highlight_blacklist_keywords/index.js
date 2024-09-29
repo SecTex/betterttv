@@ -1,15 +1,15 @@
 import {DateTime} from 'luxon';
 import isSafeRegex from 'safe-regex2';
-import watcher from '../../watcher.js';
+import {PlatformTypes, SettingIds} from '../../constants.js';
 import settings from '../../settings.js';
 import cdn from '../../utils/cdn.js';
-import colors from '../../utils/colors.js';
-import {escapeRegExp} from '../../utils/regex.js';
-import {computeKeywords, KeywordTypes} from '../../utils/keywords.js';
-import {PlatformTypes, SettingIds} from '../../constants.js';
-import {getCurrentUser} from '../../utils/user.js';
-import {loadModuleForPlatforms} from '../../utils/modules.js';
 import {getCurrentChannel} from '../../utils/channel.js';
+import colors from '../../utils/colors.js';
+import {computeKeywords, KeywordTypes} from '../../utils/keywords.js';
+import {loadModuleForPlatforms} from '../../utils/modules.js';
+import {escapeRegExp} from '../../utils/regex.js';
+import {getCurrentUser} from '../../utils/user.js';
+import watcher from '../../watcher.js';
 
 const CHAT_LIST_SELECTOR =
   '.chat-list .chat-scrollable-area__message-container,.chat-list--default .chat-scrollable-area__message-container,.chat-list--other .chat-scrollable-area__message-container,.video-chat div[data-test-selector="video-chat-message-list-wrapper"]';
@@ -88,6 +88,23 @@ function computeHighlightKeywords() {
   highlightKeywords = computedKeywords;
   highlightUsers = computedUsers;
   highlightBadges = computedBadges;
+}
+
+const recentHighlights = [];
+function isDuplicateHighlight({date, from, message}) {
+  const timestamp = DateTime.fromJSDate(new Date(date)).toFormat('hh:mm');
+
+  const recentHighlightKey = `${timestamp},${from},${message}`;
+  if (recentHighlights.includes(recentHighlightKey)) {
+    return true;
+  }
+
+  recentHighlights.push(recentHighlightKey);
+  if (recentHighlights.length >= 30) {
+    recentHighlights.shift();
+  }
+
+  return false;
 }
 
 function readRepairKeywords() {
@@ -313,7 +330,9 @@ class ChatHighlightBlacklistKeywordsModule {
     ) {
       this.markHighlighted(message, color);
 
-      if (isReply(message)) return;
+      if (isReply(message) || isDuplicateHighlight({date, from, message: messageText})) {
+        return;
+      }
 
       if (settings.get(SettingIds.HIGHLIGHT_FEEDBACK)) {
         this.handleHighlightSound();
@@ -356,11 +375,13 @@ class ChatHighlightBlacklistKeywordsModule {
     ) {
       this.markHighlighted(message, color);
 
-      if (settings.get(SettingIds.HIGHLIGHT_FEEDBACK)) {
-        this.handleHighlightSound();
-      }
+      if (!isDuplicateHighlight({from, message: messageContent, date: new Date()})) {
+        if (settings.get(SettingIds.HIGHLIGHT_FEEDBACK)) {
+          this.handleHighlightSound();
+        }
 
-      this.pinHighlight({from, message: messageContent, date: new Date()});
+        this.pinHighlight({from, message: messageContent, date: new Date()});
+      }
     }
   }
 
@@ -376,7 +397,8 @@ class ChatHighlightBlacklistKeywordsModule {
   }
 
   markBlacklisted(message) {
-    message.style.setProperty('display', 'none', 'important');
+    const messageContainer = message.closest('.announcement-line') ?? message;
+    messageContainer.style.setProperty('display', 'none', 'important');
   }
 
   loadPinnedHighlights() {
@@ -408,7 +430,7 @@ class ChatHighlightBlacklistKeywordsModule {
       pinnedHighlightsContainer.style.top = 0;
     }
 
-    if (pinnedHighlightsContainer.childNodes.length + 1 > settings.get(SettingIds.MAX_PINNED_HIGHLIGHTS)) {
+    if (pinnedHighlightsContainer.childNodes.length >= settings.get(SettingIds.MAX_PINNED_HIGHLIGHTS)) {
       pinnedHighlightsContainer.firstChild.remove();
     }
 

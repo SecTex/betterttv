@@ -1,9 +1,11 @@
-import settings from '../../settings.js';
-import watcher from '../../watcher.js';
-import twitch from '../../utils/twitch.js';
 import {AutoPlayFlags, PlatformTypes, SettingIds} from '../../constants.js';
+import settings from '../../settings.js';
 import {hasFlag} from '../../utils/flags.js';
 import {loadModuleForPlatforms} from '../../utils/modules.js';
+import twitch from '../../utils/twitch.js';
+import watcher from '../../watcher.js';
+
+const FEATURED_VIDEO_SELECTOR = 'div[data-test-selector="featured-item-video"]';
 
 class DisableHomepageAutoplayModule {
   constructor() {
@@ -11,9 +13,18 @@ class DisableHomepageAutoplayModule {
   }
 
   load() {
-    if (hasFlag(settings.get(SettingIds.AUTO_PLAY), AutoPlayFlags.FP_VIDEO)) return;
+    if (hasFlag(settings.get(SettingIds.AUTO_PLAY), AutoPlayFlags.FP_VIDEO)) {
+      return;
+    }
+
+    if (document.querySelector(FEATURED_VIDEO_SELECTOR) == null) {
+      return;
+    }
+
     const currentPlayer = twitch.getCurrentPlayer();
-    if (!currentPlayer) return;
+    if (!currentPlayer) {
+      return;
+    }
 
     const prevMuted = currentPlayer.isMuted();
 
@@ -21,6 +32,10 @@ class DisableHomepageAutoplayModule {
 
     const stopAutoplay = () => {
       setTimeout(() => {
+        if (document.querySelector(FEATURED_VIDEO_SELECTOR) == null) {
+          return;
+        }
+
         currentPlayer.pause();
         currentPlayer.setMuted(prevMuted);
       }, 0);

@@ -1,7 +1,7 @@
-import extension from '../../utils/extension.js';
 import {PlatformTypes} from '../../constants.js';
-import {getPlatform} from '../../utils/window.js';
+import extension from '../../utils/extension.js';
 import {loadModuleForPlatforms} from '../../utils/modules.js';
+import {getPlatform} from '../../utils/window.js';
 
 class GlobalCSSModule {
   constructor() {
@@ -18,12 +18,18 @@ class GlobalCSSModule {
       document.body.classList.toggle('bttv-youtube', true);
     }
 
-    return new Promise((resolve) => {
+    const extensionCSSUrl = extension.url('betterttv.css', true);
+    if (!extensionCSSUrl) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
       const css = document.createElement('link');
-      css.setAttribute('href', extension.url('betterttv.css', true));
+      css.setAttribute('href', extensionCSSUrl);
       css.setAttribute('type', 'text/css');
       css.setAttribute('rel', 'stylesheet');
       css.addEventListener('load', () => resolve());
+      css.addEventListener('error', (err) => reject(err));
       document.body.appendChild(css);
     });
   }

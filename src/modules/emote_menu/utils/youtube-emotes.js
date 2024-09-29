@@ -1,11 +1,11 @@
 /* eslint-disable import/prefer-default-export */
-import uniqBy from 'lodash.uniqby';
 import sortBy from 'lodash.sortby';
-import Emote from '../../emotes/emote.js';
-import Icons from '../components/Icons.jsx';
+import uniqBy from 'lodash.uniqby';
 import {EmoteCategories, EmoteProviders} from '../../../constants.js';
 import {getCurrentChannel} from '../../../utils/channel.js';
 import {getLiveChat} from '../../../utils/youtube.js';
+import Emote from '../../emotes/emote.js';
+import Icons from '../components/Icons.jsx';
 
 const DEFAULT_CATEGORY_NAME = 'Unknown';
 
@@ -35,9 +35,7 @@ function getCategoryForChannelId(channelId, categoryName) {
 }
 
 function isLocked(emoteId) {
-  const liveChat = getLiveChat();
-  const youtubeCustomEmojis = liveChat?.emojis;
-  return youtubeCustomEmojis.find(({emojiId}) => emojiId === emoteId).isLocked;
+  return getLiveChat()?.emojis?.find(({emojiId}) => emojiId === emoteId)?.isLocked ?? false;
 }
 
 export async function loadYouTubeEmotes() {

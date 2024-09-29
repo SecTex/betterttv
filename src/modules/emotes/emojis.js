@@ -1,14 +1,13 @@
 import twemoji from 'twemoji';
+import {CDN_ENDPOINT, EmoteCategories, EmoteProviders} from '../../constants.js';
+import formatMessage from '../../i18n/index.js';
 import blacklistedEmoji from '../../utils/emoji-blacklist.js';
 
 import AbstractEmotes from './abstract-emotes.js';
-import Emote from './emote.js';
-import {EmoteCategories, EmoteProviders} from '../../constants.js';
-import formatMessage from '../../i18n/index.js';
-
 // file gets created during bundle
 // eslint-disable-next-line import/no-unresolved
 import emojiBySlug from './emojis-by-slug.json';
+import Emote from './emote.js';
 
 const category = {
   id: EmoteCategories.BETTERTTV_EMOJI,
@@ -47,7 +46,7 @@ class Emojis extends AbstractEmotes {
         let url;
 
         twemoji.parse(emoji.char, {
-          base: process.env.CDN_ENDPOINT,
+          base: CDN_ENDPOINT,
           folder: 'assets/emoji',
           ext: '.svg',
           callback: (icon, options) => {

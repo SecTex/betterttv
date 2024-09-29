@@ -1,12 +1,12 @@
-import watcher from '../../watcher.js';
-import cdn from '../../utils/cdn.js';
-import {getCurrentChannel, setCurrentChannel} from '../../utils/channel.js';
-
-import AbstractEmotes from './abstract-emotes.js';
-import Emote from './emote.js';
 import {EmoteCategories, EmoteProviders} from '../../constants.js';
 import formatMessage from '../../i18n/index.js';
 import socketClient, {deserializeSocketChannel, EventNames} from '../../socket-client.js';
+import cdn from '../../utils/cdn.js';
+import {getCurrentChannel, setCurrentChannel} from '../../utils/channel.js';
+import watcher from '../../watcher.js';
+
+import AbstractEmotes from './abstract-emotes.js';
+import Emote from './emote.js';
 
 const category = {
   id: EmoteCategories.BETTERTTV_CHANNEL,
@@ -74,7 +74,10 @@ class ChannelEmotes extends AbstractEmotes {
       this.emotes.delete(emote.code);
 
       const newEmote = {...emote, ...payload.emote};
-      this.emotes.set(newEmote.code, createEmote(newEmote.id, newEmote.code, newEmote.animated, newEmote.user));
+      this.emotes.set(
+        newEmote.code,
+        createEmote(newEmote.id, newEmote.code, newEmote.animated, newEmote.user ?? emote.channel)
+      );
 
       watcher.emit('emotes.updated');
     });

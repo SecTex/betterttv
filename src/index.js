@@ -20,7 +20,11 @@
   // prevent loads in source-less iframes
   try {
     const {frameElement} = window;
-    if (frameElement != null && (frameElement.src == null || frameElement.src === '')) {
+    if (
+      frameElement != null &&
+      (frameElement.src == null || frameElement.src === '') &&
+      frameElement.id !== 'chatframe'
+    ) {
       return;
     }
   } catch (e) {}
@@ -29,36 +33,41 @@
   if (window.BetterTTV || window.__betterttv) return;
   window.__betterttv = true;
 
-  await import('./utils/sentry.js');
+  const {default: Sentry} = await import('./utils/sentry.js');
 
-  const {load: loadI18n} = await import('./i18n/index.js');
-  await loadI18n();
+  try {
+    const {load: loadI18n} = await import('./i18n/index.js');
+    await loadI18n();
 
-  const {default: extension} = await import('./utils/extension.js');
-  extension.setCurrentScript(currentScript);
+    const {default: extension} = await import('./utils/extension.js');
+    await extension.setCurrentScript(currentScript);
 
-  const {default: globalCSS} = await import('./modules/global_css/index.js');
-  const globalCSSLoadPromise = globalCSS.loadGlobalCSS();
+    const {default: globalCSS} = await import('./modules/global_css/index.js');
+    const globalCSSLoadPromise = globalCSS.loadGlobalCSS();
 
-  const {default: debug} = await import('./utils/debug.js');
-  const {default: watcher} = await import('./watcher.js');
+    const {default: debug} = await import('./utils/debug.js');
+    const {default: watcher} = await import('./watcher.js');
+    const {EXT_VER, NODE_ENV, GIT_REV} = await import('./constants.js');
 
-  // wait until styles load to prevent flashing
-  await globalCSSLoadPromise;
+    // wait until styles load to prevent flashing
+    await globalCSSLoadPromise;
 
-  // eslint-disable-next-line import/no-unresolved
-  await import('./modules/**/index.js');
+    // eslint-disable-next-line import/no-unresolved
+    await import('./modules/**/index.js');
 
-  watcher.setup();
+    watcher.setup();
 
-  debug.log(`BetterTTV v${debug.version} loaded. ${process.env.NODE_ENV} @ ${process.env.GIT_REV}`);
+    debug.log(`BetterTTV v${EXT_VER} loaded. ${NODE_ENV} @ ${GIT_REV}`);
 
-  window.BetterTTV = {
-    version: debug.version,
-    settings: (await import('./settings.js')).default,
-    emoteMenu: (await import('./common/api/emote-menu.js')).default,
-    watcher: {
-      emitLoad: (name) => watcher.emit(`load.${name}`),
-    },
-  };
+    window.BetterTTV = {
+      version: EXT_VER,
+      settings: (await import('./settings.js')).default,
+      emoteMenu: (await import('./common/api/emote-menu.js')).default,
+      watcher: {
+        emitLoad: (name) => watcher.emit(`load.${name}`),
+      },
+    };
+  } catch (e) {
+    Sentry.captureException(e);
+  }
 })(document.currentScript);

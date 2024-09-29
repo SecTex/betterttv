@@ -1,15 +1,15 @@
 /* eslint-disable import/prefer-default-export */
-import uniqBy from 'lodash.uniqby';
-import sortBy from 'lodash.sortby';
 import gql from 'graphql-tag';
+import sortBy from 'lodash.sortby';
+import uniqBy from 'lodash.uniqby';
+import {SettingIds, EmoteCategories, EmoteProviders} from '../../../constants.js';
+import settings from '../../../settings.js';
+import {getCurrentChannel} from '../../../utils/channel.js';
+import debug from '../../../utils/debug.js';
+import {getEmoteFromRegEx} from '../../../utils/regex.js';
 import twitch from '../../../utils/twitch.js';
 import Emote from '../../emotes/emote.js';
 import Icons from '../components/Icons.jsx';
-import debug from '../../../utils/debug.js';
-import {getEmoteFromRegEx} from '../../../utils/regex.js';
-import settings from '../../../settings.js';
-import {SettingIds, EmoteCategories, EmoteProviders} from '../../../constants.js';
-import {getCurrentChannel} from '../../../utils/channel.js';
 
 const AVAILABLE_EMOTES_FOR_CHANNEL_QUERY = gql`
   query BTTVAvailableEmotesForChannel($channelID: ID!) {
@@ -151,8 +151,9 @@ export async function loadTwitchEmotes() {
   const isDark = settings.get(SettingIds.DARKENED_MODE);
   const tempCategories = {};
 
-  const subscriptionProducts = data.user.subscriptionProducts ?? [];
-  const localEmoteSets = data.channel.localEmoteSets ?? [];
+  const subscriptionProducts = data.user?.subscriptionProducts ?? [];
+  const localEmoteSets = data.channel?.localEmoteSets ?? [];
+  const channelSelfAvailableEmoteSets = data.channel?.self?.availableEmoteSets ?? [];
 
   const channelProducts = [...subscriptionProducts, ...localEmoteSets].map(({id, emoteSetID, ...rest}) => ({
     id: emoteSetID == null ? id : emoteSetID,
@@ -160,12 +161,9 @@ export async function loadTwitchEmotes() {
     product: true,
   }));
 
-  for (const {owner, id: setId, emotes, product = false} of [
-    ...data.channel.self.availableEmoteSets,
-    ...channelProducts,
-  ]) {
+  for (const {owner, id: setId, emotes, product = false} of [...channelSelfAvailableEmoteSets, ...channelProducts]) {
     const category = getCategoryForSet(setId, owner);
-    const locked = product && data.channel.self.availableEmoteSets.find(({id}) => id === setId) == null;
+    const locked = product && channelSelfAvailableEmoteSets.find(({id}) => id === setId) == null;
 
     const categoryEmotes = emotes.map((emote) => {
       const {id: emoteId, token: emoteToken, type, assetType} = emote;

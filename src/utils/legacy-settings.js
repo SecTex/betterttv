@@ -130,12 +130,20 @@ function deserializeSettingForLegacy(data, settingId) {
       const hideOfflineFollowedChannels = data[LegacySettingIds.HIDE_OFFLINE_FOLLOWED_CHANNELS] || false;
       const autoExpand = data[LegacySettingIds.AUTO_EXPAND_CHANNELS] || false;
 
-      let flags = setFlag(0, SidebarFlags.FEATURED_CHANNELS, !hideFeaturedChannels);
+      let flags = setFlag(
+        0,
+        SidebarFlags.RECOMMENDED_CHANNELS | SidebarFlags.RECENTLY_WATCHED_CHANNELS | SidebarFlags.SIMILAR_CHANNELS,
+        !hideFeaturedChannels
+      );
       flags = setFlag(flags, SidebarFlags.OFFLINE_FOLLOWED_CHANNELS, !hideOfflineFollowedChannels);
       flags = setFlag(flags, SidebarFlags.AUTO_EXPAND_CHANNELS, autoExpand);
       return [
         flags,
-        SidebarFlags.FEATURED_CHANNELS | SidebarFlags.OFFLINE_FOLLOWED_CHANNELS | SidebarFlags.AUTO_EXPAND_CHANNELS,
+        SidebarFlags.RECOMMENDED_CHANNELS |
+          SidebarFlags.OFFLINE_FOLLOWED_CHANNELS |
+          SidebarFlags.AUTO_EXPAND_CHANNELS |
+          SidebarFlags.RECENTLY_WATCHED_CHANNELS |
+          SidebarFlags.SIMILAR_CHANNELS,
       ];
     }
     case SettingIds.EMOTES: {
@@ -188,13 +196,11 @@ function deserializeSettingForLegacy(data, settingId) {
     }
     case SettingIds.AUTO_PLAY: {
       const disableFrontPageVideo = data[LegacySettingIds.DISABLE_FP_VIDEO] || false;
-      const disableHostMode = data[LegacySettingIds.DISABLE_HOST_MODE] || false;
       const disableVodRecommendationAutoplay = data[LegacySettingIds.DISABLE_VOD_RECOMMENDATION_AUTOPLAY] || false;
 
       let flags = setFlag(0, AutoPlayFlags.FP_VIDEO, !disableFrontPageVideo);
-      flags = setFlag(flags, AutoPlayFlags.HOST_MODE, !disableHostMode);
       flags = setFlag(flags, AutoPlayFlags.VOD_RECOMMENDATION_AUTOPLAY, !disableVodRecommendationAutoplay);
-      return [flags, AutoPlayFlags.FP_VIDEO | AutoPlayFlags.HOST_MODE | AutoPlayFlags.VOD_RECOMMENDATION_AUTOPLAY];
+      return [flags, AutoPlayFlags.FP_VIDEO | AutoPlayFlags.VOD_RECOMMENDATION_AUTOPLAY];
     }
     case SettingIds.USERNAMES: {
       const disableUsernameColors = data[LegacySettingIds.DISABLE_USERNAME_COLORS] || false;

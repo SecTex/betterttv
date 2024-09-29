@@ -1,11 +1,25 @@
-import React, {useState, useEffect} from 'react';
-import Panel from 'rsuite/Panel';
-import {Icon} from '@rsuite/icons';
-import InputGroup from 'rsuite/InputGroup';
-import AutoComplete from 'rsuite/AutoComplete';
 import * as faSearch from '@fortawesome/free-solid-svg-icons/faSearch';
+import {Icon} from '@rsuite/icons';
+import React, {useState, useEffect} from 'react';
+import AutoComplete from 'rsuite/AutoComplete';
+import Button from 'rsuite/Button';
+import InputGroup from 'rsuite/InputGroup';
+import Panel from 'rsuite/Panel';
 import FontAwesomeSvgIcon from '../../../common/components/FontAwesomeSvgIcon.jsx';
 import formatMessage from '../../../i18n/index.js';
+import extension from '../../../utils/extension.js';
+import styles from './Settings.module.css';
+
+const CHROME_VERSION = navigator.userAgentData?.brands?.find(({brand}) => brand === 'Chromium')?.version;
+const IS_UNSUPPORTED_CHROME_INSTALL =
+  CHROME_VERSION != null ? parseInt(CHROME_VERSION, 10) < 111 && extension.getExtension() != null : false;
+const UNSUPPORTED_LEARN_MORE_URL = 'https://github.com/night/betterttv/issues/6860';
+
+if (IS_UNSUPPORTED_CHROME_INSTALL) {
+  // eslint-disable-next-line no-console
+  console.error(`BTTV: Unsupported Chromium version (v${CHROME_VERSION}). Your browser's Chromium version is not supported. Please upgrade to a version of
+  Chromium that is 111 or higher. Learn more at ${UNSUPPORTED_LEARN_MORE_URL}`);
+}
 
 let cachedSettings = null;
 
@@ -43,6 +57,20 @@ export function Settings({search, category}) {
               setting.name.toLowerCase().includes(search.toLowerCase())
           )
           .map((setting) => setting.render());
+
+  if (IS_UNSUPPORTED_CHROME_INSTALL) {
+    return (
+      <Panel header="Unsupported Chromium Version">
+        <p>
+          Your browser&apos;s Chromium version (v{CHROME_VERSION}) is not supported. Please upgrade to a version of
+          Chromium that is 111 or higher.
+        </p>
+        <Button href={UNSUPPORTED_LEARN_MORE_URL} appearance="primary" className={styles.unsupportedPanelButton}>
+          Learn more
+        </Button>
+      </Panel>
+    );
+  }
 
   return searchedSettings.length === 0 ? (
     <Panel header={formatMessage({defaultMessage: 'No more results...'})} />

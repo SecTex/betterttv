@@ -1,14 +1,14 @@
+import {EmoteCategories, EmoteTypeFlags, SettingIds} from '../../../constants.js';
+import dom from '../../../observers/dom.js';
+import settings from '../../../settings.js';
+import {hasFlag} from '../../../utils/flags.js';
+import {createSrcSet, createSrc} from '../../../utils/image.js';
 import twitch from '../../../utils/twitch.js';
 import {getCurrentUser} from '../../../utils/user.js';
 import watcher from '../../../watcher.js';
-import dom from '../../../observers/dom.js';
+import chat, {getMessagePartsFromMessageElement, formatChatUser} from '../../chat/index.js';
 import emotes from '../../emotes/index.js';
-import {createSrcSet, createSrc} from '../../../utils/image.js';
-import {EmoteCategories, EmoteTypeFlags, SettingIds} from '../../../constants.js';
 import './EmoteAutocomplete.module.css';
-import settings from '../../../settings.js';
-import {hasFlag} from '../../../utils/flags.js';
-import chat from '../../chat/index.js';
 
 const EMOTE_ID_BETTERTTV_PREFIX = '__BTTV__';
 const CUSTOM_SET_ID = 'BETTERTTV_EMOTES';
@@ -111,22 +111,27 @@ function patchEmoteImage(image, isConnected) {
       imageButton.remove();
     } else {
       span = document.createElement('span');
+      span.setAttribute('data-a-target', 'chat-message-text');
       imageButton.replaceWith(span);
     }
+
     const {lastChild} = span;
     if (lastChild != null && lastChild.nodeType === 3) {
-      lastChild.textContent += image.alt;
+      lastChild.textContent += deseralizedEmote.code;
     } else {
-      span.appendChild(document.createTextNode(image.alt));
+      span.appendChild(document.createTextNode(deseralizedEmote.code));
     }
+
+    // some emotes do not get handled by Twitch's native parsing, so we need to undo our parsing and re-parse
+    imageButtonMessage.querySelectorAll('.bttv-emote').forEach((emote) => {
+      emote.replaceWith(document.createTextNode(emote.querySelector('img').alt));
+    });
+
+    span.normalize();
+
     chat.messageReplacer(
-      span,
-      {
-        id: imageButtonMessageObject.user.userID,
-        name: imageButtonMessageObject.user.userLogin,
-        displayName: imageButtonMessageObject.user.userDisplayName,
-      },
-      true
+      getMessagePartsFromMessageElement(imageButtonMessage),
+      formatChatUser(imageButtonMessageObject)
     );
     return;
   }

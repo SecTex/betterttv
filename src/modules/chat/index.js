@@ -1,20 +1,19 @@
-import watcher from '../../watcher.js';
-import colors from '../../utils/colors.js';
-import twitch from '../../utils/twitch.js';
+import {EmoteTypeFlags, SettingIds, UsernameFlags, PlatformTypes, BadgeTypes} from '../../constants.js';
+import formatMessage from '../../i18n/index.js';
+import settings from '../../settings.js';
 import api from '../../utils/api.js';
 import cdn from '../../utils/cdn.js';
-import settings from '../../settings.js';
-import emotes from '../emotes/index.js';
-import nicknames from '../chat_nicknames/index.js';
-import subscribers from '../subscribers/index.js';
-import splitChat from '../split_chat/index.js';
-import {EmoteTypeFlags, SettingIds, UsernameFlags, PlatformTypes, BadgeTypes} from '../../constants.js';
-import {hasFlag} from '../../utils/flags.js';
 import {getCurrentChannel} from '../../utils/channel.js';
-import formatMessage from '../../i18n/index.js';
+import colors from '../../utils/colors.js';
+import {hasFlag} from '../../utils/flags.js';
+import twitch from '../../utils/twitch.js';
 import {getPlatform} from '../../utils/window.js';
+import watcher from '../../watcher.js';
+import nicknames from '../chat_nicknames/index.js';
+import emotes from '../emotes/index.js';
+import splitChat from '../split_chat/index.js';
+import subscribers from '../subscribers/index.js';
 
-const EMOTE_STRIP_SYMBOLS_REGEX = /(^[~!@#$%^&*()]+|[~!@#$%^&*()]+$)/g;
 const STEAM_LOBBY_JOIN_REGEX = /^steam:\/\/joinlobby\/\d+\/\d+\/\d+$/;
 const EMOTES_TO_CAP = ['567b5b520e984428652809b6'];
 const MAX_EMOTES_WHEN_CAPPED = 10;
@@ -31,6 +30,8 @@ const EMOTE_MODIFIERS = {
   'c!': 'bttv-emote-modifier-cursed',
   'l!': 'bttv-emote-modifier-rotate-left',
   'r!': 'bttv-emote-modifier-rotate-right',
+  'p!': 'bttv-emote-modifier-party',
+  's!': 'bttv-emote-modifier-shake',
   ffzW: 'bttv-emote-modifier-wide',
   ffzX: 'bttv-emote-modifier-flip-horizontal',
   ffzY: 'bttv-emote-modifier-flip-vertical',
@@ -65,7 +66,7 @@ const steamLobbyJoinTemplate = (joinLink) => {
   return anchor;
 };
 
-function formatChatUser(message) {
+export function formatChatUser(message) {
   if (message == null) {
     return null;
   }
@@ -114,7 +115,7 @@ function hasNonASCII(message) {
   return false;
 }
 
-function getMessagePartsFromMessageElement(message) {
+export function getMessagePartsFromMessageElement(message) {
   return message.querySelectorAll('span[data-a-target="chat-message-text"]');
 }
 
@@ -123,13 +124,14 @@ class ChatModule {
     watcher.on('load', () => this.loadEmoteMouseHandler());
     settings.on(`changed.${SettingIds.EMOTES}`, () => this.loadEmoteMouseHandler());
     watcher.on('chat.message', (element, message) => this.messageParser(element, message));
+    watcher.on('chat.seventv_message', (element, userId) => this.seventvMessageParser(element, userId));
     watcher.on('chat.notice_message', (element) => this.noticeMessageParser(element));
     watcher.on('chat.pinned_message', (element) => this.pinnedMessageParser(element));
     watcher.on('chat.status', (element, message) => {
       if (message?.renderBetterTTVEmotes !== true) {
         return;
       }
-      this.messageReplacer(element, null, true);
+      this.messageReplacer(element, null);
     });
     watcher.on('channel.updated', ({bots}) => {
       channelBots = bots;
@@ -257,7 +259,7 @@ class ChatModule {
     modsOnly = enabled;
   }
 
-  messageReplacer(nodes, user, exact = false) {
+  messageReplacer(nodes, user) {
     let tokens = [];
     if (
       NodeList.prototype.isPrototypeOf.call(NodeList.prototype, nodes) ||
@@ -310,9 +312,7 @@ class ChatModule {
 
         let emoteIndex = j;
         let isEmoteOrSuffixModifier = false;
-        let emote =
-          emotes.getEligibleEmote(part, user) ||
-          (!exact ? emotes.getEligibleEmote(part.replace(EMOTE_STRIP_SYMBOLS_REGEX, ''), user) : null);
+        let emote = emotes.getEligibleEmote(part, user);
         if (emote != null && !emote.modifier) {
           partMetadata[j] = {emote};
           isEmoteOrSuffixModifier = true;
@@ -394,43 +394,56 @@ class ChatModule {
   }
 
   messageParser(element, messageObj) {
+    const fromNode = element.querySelector('.chat-author__display-name,.chat-author__intl-login');
+    const messageParts = getMessagePartsFromMessageElement(element);
+
+    let badgesContainer = element.querySelector('.chat-badge')?.closest('span');
+    if (badgesContainer == null) {
+      badgesContainer = element.querySelector('span.chat-line__username')?.previousSibling;
+      if (badgesContainer?.nodeName !== 'SPAN') {
+        badgesContainer = null;
+      }
+    }
+
+    this._messageParser(element, messageObj, fromNode, badgesContainer, messageParts);
+  }
+
+  seventvMessageParser(element, messageObj) {
+    const fromNode = element.querySelector('.seventv-chat-user-username');
+    const badgesContainer = element.querySelector('.seventv-chat-user-badge-list');
+    const messageParts = element.querySelectorAll('.seventv-chat-message-body > span');
+    this._messageParser(element, messageObj, fromNode, badgesContainer, messageParts);
+  }
+
+  _messageParser(element, messageObj, fromNode, badgesContainer, messageParts = []) {
     if (element.__bttvParsed) return;
 
-    splitChat.render(element);
+    splitChat.render(element, messageObj);
 
     const user = formatChatUser(messageObj);
     if (!user) return;
 
-    const from = element.querySelector('.chat-author__display-name,.chat-author__intl-login');
     let color;
     if (hasFlag(settings.get(SettingIds.USERNAMES), UsernameFlags.READABLE)) {
       color = this.calculateColor(user.color);
 
-      from.style.color = color;
+      fromNode.style.color = color;
       if (element.style.color) {
         element.style.color = color;
       }
     } else {
-      color = from.style.color;
+      color = fromNode.style.color;
     }
 
     if (subscribers.hasGlow(user.id) && settings.get(SettingIds.DARKENED_MODE) === true) {
       const rgbColor = colors.getRgb(color);
-      from.style.textShadow = `0 0 20px rgba(${rgbColor.r}, ${rgbColor.g}, ${rgbColor.b}, 0.8)`;
+      fromNode.style.textShadow = `0 0 20px rgba(${rgbColor.r}, ${rgbColor.g}, ${rgbColor.b}, 0.8)`;
     }
 
     if ((globalBots.includes(user.name) || channelBots.includes(user.name)) && user.mod) {
       element
         .querySelector('img.chat-badge[alt="Moderator"]')
         ?.replaceWith(badgeTemplate(cdn.url('tags/bot.png'), formatMessage({defaultMessage: 'Bot'})));
-    }
-
-    let badgesContainer = element.querySelector('.chat-badge')?.closest('span');
-    if (badgesContainer == null) {
-      badgesContainer = element.querySelector('span.chat-line__username').previousSibling;
-      if (badgesContainer.nodeName !== 'SPAN') {
-        badgesContainer = null;
-      }
     }
 
     const customBadges = this.customBadges(user);
@@ -442,7 +455,7 @@ class ChatModule {
 
     const nickname = nicknames.get(user.name);
     if (nickname) {
-      from.innerText = nickname;
+      fromNode.innerText = nickname;
     }
 
     if (
@@ -454,7 +467,7 @@ class ChatModule {
       element.style.display = 'none';
     }
 
-    this.messageReplacer(getMessagePartsFromMessageElement(element), user);
+    this.messageReplacer(messageParts, user);
 
     element.__bttvParsed = true;
   }

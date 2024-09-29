@@ -1,21 +1,22 @@
-import webpack from 'webpack';
-import {CleanWebpackPlugin} from 'clean-webpack-plugin';
-import VirtualModulesPlugin from 'webpack-virtual-modules';
-import CopyPlugin from 'copy-webpack-plugin';
-import MiniCssExtractPlugin from 'mini-css-extract-plugin';
-import RemovePlugin from 'remove-files-webpack-plugin';
 import fs from 'fs/promises';
-import path from 'path';
 import {createRequire} from 'module';
+import path from 'path';
+import {sentryWebpackPlugin} from '@sentry/webpack-plugin';
+import {CleanWebpackPlugin} from 'clean-webpack-plugin';
+import CopyPlugin from 'copy-webpack-plugin';
+import CssMinimizerPlugin from 'css-minimizer-webpack-plugin';
+import FileManagerPlugin from 'filemanager-webpack-plugin';
+// eslint-disable-next-line import/no-unresolved
 import {globSync} from 'glob';
-import TerserPlugin from 'terser-webpack-plugin';
-import postcssUrl from 'postcss-url';
 // eslint-disable-next-line import/no-unresolved
 import got from 'got';
-import CssMinimizerPlugin from 'css-minimizer-webpack-plugin';
-import SentryWebpackPlugin from '@sentry/webpack-plugin';
-import FileManagerPlugin from 'filemanager-webpack-plugin';
+import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import normalizePath from 'normalize-path';
+import postcssUrl from 'postcss-url';
+import RemovePlugin from 'remove-files-webpack-plugin';
+import TerserPlugin from 'terser-webpack-plugin';
+import webpack from 'webpack';
+import VirtualModulesPlugin from 'webpack-virtual-modules';
 
 const git = createRequire(import.meta.url)('git-rev-sync');
 const {EnvironmentPlugin, optimize} = webpack;
@@ -143,6 +144,7 @@ export default async (env, argv) => {
               options: {
                 modules: {
                   auto: true,
+                  namedExport: false,
                   localIdentName: 'bttv-[name]__[local]-[hash:base64:5]',
                 },
               },
@@ -234,6 +236,7 @@ export default async (env, argv) => {
       }),
       new MiniCssExtractPlugin({
         filename: '[name].css',
+        ignoreOrder: true,
       }),
       new VirtualModulesPlugin({
         'src/modules/emotes/emojis-by-slug.json': JSON.stringify(jsonTransform(emotes)),
@@ -243,14 +246,18 @@ export default async (env, argv) => {
       }),
       ...(process.env.GITHUB_TAG || process.env.GIT_REV
         ? [
-            new SentryWebpackPlugin({
-              authToken: process.env.SENTRY_AUTH_TOKEN,
-              release: process.env.GIT_REV || git.long(),
+            sentryWebpackPlugin({
+              authToken: process.env.GITHUB_TAG != null ? process.env.SENTRY_AUTH_TOKEN : undefined,
+              release: {
+                name: process.env.GIT_REV || git.long(),
+              },
               org: 'nightdev',
               project: 'betterttv-extension',
-              include: './build',
-              ignore: ['dev', 'node_modules', 'webpack.config.js'],
-              dryRun: process.env.GITHUB_TAG == null,
+              sourcemaps: {
+                include: ['./build'],
+                ignore: ['dev', 'node_modules', 'webpack.config.js'],
+              },
+              telemetry: false,
             }),
           ]
         : []),

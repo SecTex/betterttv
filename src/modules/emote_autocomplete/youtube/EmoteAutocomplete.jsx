@@ -1,10 +1,12 @@
 import React from 'react';
 import {createRoot} from 'react-dom/client';
+import AutocompleteWhisper from '../../../common/components/autocomplete/AutocompleteWhisper.jsx';
+import emoteMenuViewStore from '../../../common/stores/emote-menu-view-store.js';
 import {EmoteProviders, SettingIds} from '../../../constants.js';
+import domObserver from '../../../observers/dom.js';
 import settings from '../../../settings.js';
 import {createYoutubeEmojiNode} from '../../../utils/youtube.js';
-import domObserver from '../../../observers/dom.js';
-import EmoteWhisper from '../components/EmoteWhisper.jsx';
+import EmoteRow from '../components/EmoteRow.jsx';
 import styles from './EmoteAutocomplete.module.css';
 
 let mountedRoot;
@@ -76,11 +78,25 @@ export default class EmoteAutocomplete {
 
       mountedRoot = createRoot(emoteAutocompleteMatchesContainer);
       mountedRoot.render(
-        <EmoteWhisper
+        <AutocompleteWhisper
           boundingQuerySelector={CHAT_TEXT_AREA}
           chatInputElement={element}
           onComplete={this.replaceChatInputPartialEmote}
-          getChatInputPartialEmote={this.getChatInputPartialEmote}
+          getChatInputPartialInput={this.getChatInputPartialEmote}
+          computeMatches={(partialInput) => {
+            const searchedEmotes = emoteMenuViewStore.search(partialInput);
+            return searchedEmotes.map(({item}) => item);
+          }}
+          renderRow={({key, index, item, handleAutocomplete, active, setSelected}) => (
+            <EmoteRow
+              key={key}
+              index={index}
+              emote={item}
+              handleAutocomplete={handleAutocomplete}
+              active={active}
+              setSelected={setSelected}
+            />
+          )}
         />
       );
     }

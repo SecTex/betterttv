@@ -1,12 +1,12 @@
 import ReconnectingEventSource from 'reconnecting-eventsource';
-import watcher from '../../watcher.js';
+import {EmoteCategories, EmoteProviders, EmoteTypeFlags, SettingIds} from '../../constants.js';
+import formatMessage from '../../i18n/index.js';
 import settings from '../../settings.js';
+import {getCurrentChannel} from '../../utils/channel.js';
+import {hasFlag} from '../../utils/flags.js';
+import watcher from '../../watcher.js';
 import AbstractEmotes from '../emotes/abstract-emotes.js';
 import {createEmote, isOverlay} from './utils.js';
-import {EmoteCategories, EmoteProviders, EmoteTypeFlags, SettingIds} from '../../constants.js';
-import {hasFlag} from '../../utils/flags.js';
-import {getCurrentChannel} from '../../utils/channel.js';
-import formatMessage from '../../i18n/index.js';
 
 const category = {
   id: EmoteCategories.SEVENTV_CHANNEL,
@@ -55,13 +55,19 @@ class SevenTVChannelEmotes extends AbstractEmotes {
         for (const {
           id,
           name: code,
-          data: {listed, animated, owner, flags},
+          data: {
+            listed,
+            animated,
+            owner,
+            flags,
+            host: {url},
+          },
         } of emotes) {
           if (!listed && !hasFlag(settings.get(SettingIds.EMOTES), EmoteTypeFlags.SEVENTV_UNLISTED_EMOTES)) {
             continue;
           }
 
-          this.emotes.set(code, createEmote(id, code, animated, owner, category, isOverlay(flags)));
+          this.emotes.set(code, createEmote(id, code, animated, owner, category, isOverlay(flags), url));
         }
 
         eventSource = new ReconnectingEventSource(
@@ -92,14 +98,20 @@ class SevenTVChannelEmotes extends AbstractEmotes {
       const {
         id,
         name: code,
-        data: {listed, animated, owner, flags},
+        data: {
+          listed,
+          animated,
+          owner,
+          flags,
+          host: {url},
+        },
       } = value;
 
       if (!listed && !hasFlag(settings.get(SettingIds.EMOTES), EmoteTypeFlags.SEVENTV_UNLISTED_EMOTES)) {
         continue;
       }
 
-      this.emotes.set(code, createEmote(id, code, animated, owner, category, isOverlay(flags)));
+      this.emotes.set(code, createEmote(id, code, animated, owner, category, isOverlay(flags), url));
 
       watcher.emit(
         'chat.send_admin_message',
@@ -118,7 +130,13 @@ class SevenTVChannelEmotes extends AbstractEmotes {
       const {
         id,
         name: code,
-        data: {listed, animated, owner, flags},
+        data: {
+          listed,
+          animated,
+          owner,
+          flags,
+          host: {url},
+        },
       } = value;
 
       const existingEmote = this.getEligibleEmoteById(id);
@@ -132,7 +150,7 @@ class SevenTVChannelEmotes extends AbstractEmotes {
         continue;
       }
 
-      this.emotes.set(code, createEmote(id, code, animated, owner, category, isOverlay(flags)));
+      this.emotes.set(code, createEmote(id, code, animated, owner, category, isOverlay(flags), url));
     }
 
     for (const {key, old_value: oldValue} of pulledItems) {

@@ -1,8 +1,9 @@
-import {createSrc, createSrcSet} from '../../utils/image.js';
+import {EmoteCategories, EmoteTypeFlags, SettingIds} from '../../constants.js';
 import formatMessage from '../../i18n/index.js';
 import settings from '../../settings.js';
-import {EmoteCategories, EmoteTypeFlags, SettingIds} from '../../constants.js';
+import {getCanonicalEmoteId} from '../../utils/emote.js';
 import {hasFlag} from '../../utils/flags.js';
+import {createSrc, createSrcSet} from '../../utils/image.js';
 
 export default class Emote {
   constructor({
@@ -36,7 +37,7 @@ export default class Emote {
     if (provider == null) {
       throw new Error('cannot create canonical id from null provider');
     }
-    return `${provider}-${this.id}`;
+    return getCanonicalEmoteId(this.id, provider);
   }
 
   render(prefixModifiers, suffixModifiers, classNames) {
@@ -78,11 +79,20 @@ export default class Emote {
     }
     container.appendChild(image);
 
-    const tooltip = document.createElement('div');
-    tooltip.classList.add('bttv-tooltip', 'bttv-tooltip--up', 'bttv-tooltip--align-center');
-    tooltip.textContent = `${this.code}\n${
+    const tooltipImage = new Image();
+    tooltipImage.classList.add('bttv-tooltip-emote-image');
+    tooltipImage.src = createSrc(this.images, shouldRenderStatic, '4x');
+
+    const tooltipText = document.createElement('div');
+    tooltipText.textContent = `${this.code}\n${
       channelName ? `${formatMessage({defaultMessage: 'Channel: {channelName}'}, {channelName})}\n` : ''
     }${this.category.displayName}`;
+
+    const tooltip = document.createElement('div');
+    tooltip.classList.add('bttv-tooltip', 'bttv-tooltip--up', 'bttv-tooltip--align-center');
+    tooltip.appendChild(tooltipImage);
+    tooltip.appendChild(tooltipText);
+
     container.appendChild(tooltip);
 
     return container;

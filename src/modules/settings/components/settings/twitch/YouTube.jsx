@@ -1,20 +1,23 @@
 import React, {useEffect} from 'react';
 import Panel from 'rsuite/Panel';
 import Toggle from 'rsuite/Toggle';
-import {registerComponent} from '../../Store.jsx';
 import {CategoryTypes} from '../../../../../constants.js';
-import styles from '../../../styles/header.module.css';
-import extension from '../../../../../utils/extension.js';
 import formatMessage from '../../../../../i18n/index.js';
+import extension from '../../../../../utils/extension.js';
+import styles from '../../../styles/header.module.css';
+import {registerComponent} from '../../Store.jsx';
 
-const EXTENSION_URL = new URL(extension.url(''));
-const HAS_LOCAL_EXTENSION_DATA = EXTENSION_URL.protocol.includes('extension');
-const EXTENSION_ID = EXTENSION_URL.host;
 const SETTING_NAME = formatMessage({defaultMessage: 'YouTube (beta)'});
+const browser = window.chrome || window.browser;
 
 function sendExtensionCommand(commandData, callback = undefined) {
-  if (window.chrome?.runtime != null) {
-    window.chrome.runtime.sendMessage(EXTENSION_ID, commandData, callback);
+  const extensionId = extension.getExtension()?.id;
+  if (!extensionId) {
+    return;
+  }
+
+  if (browser?.runtime?.sendMessage != null) {
+    browser.runtime.sendMessage(extensionId, commandData, callback);
     return;
   }
 
@@ -26,7 +29,7 @@ function sendExtensionCommand(commandData, callback = undefined) {
 
       try {
         const parsedData = JSON.parse(event.data);
-        if (parsedData.extensionId !== EXTENSION_ID || parsedData.type !== 'BETTERTTV_EXTENSION_COMMAND_RESPONSE') {
+        if (parsedData.extensionId !== extensionId || parsedData.type !== 'BETTERTTV_EXTENSION_COMMAND_RESPONSE') {
           return;
         }
 
@@ -40,7 +43,7 @@ function sendExtensionCommand(commandData, callback = undefined) {
 
   window.postMessage(
     JSON.stringify({
-      extensionId: EXTENSION_ID,
+      extensionId,
       type: 'BETTERTTV_EXTENSION_COMMAND',
       data: commandData,
     }),
@@ -105,7 +108,7 @@ function YouTube() {
 }
 
 function maybeRegisterComponent() {
-  if (!HAS_LOCAL_EXTENSION_DATA) {
+  if (extension.getExtension() == null) {
     return null;
   }
 

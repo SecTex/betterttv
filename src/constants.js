@@ -1,6 +1,15 @@
+/* eslint-disable prefer-destructuring */
+
+export const NODE_ENV = process.env.NODE_ENV;
+export const EXT_VER = process.env.EXT_VER;
+export const GIT_REV = process.env.GIT_REV;
+export const CDN_ENDPOINT = process.env.CDN_ENDPOINT;
+export const SENTRY_URL = process.env.SENTRY_URL;
+
 export const SettingIds = {
   ANON_CHAT: 'anonChat',
   ANON_CHAT_WHITELISTED_CHANNELS: 'anonChatWhitelistedChannels',
+  ANON_CHAT_BLACKLISTED_CHANNELS: 'anonChatBlacklistedChannels',
   AUTO_THEATRE_MODE: 'autoTheatreMode',
   AUTO_JOIN_RAIDS: 'autoJoinRaids',
   AUTO_MOD_VIEW: 'autoModView',
@@ -19,7 +28,8 @@ export const SettingIds = {
   WHISPERS: 'whispers',
   SHOW_DIRECTORY_LIVE_TAB: 'showDirectoryLiveTab',
   CHANNEL_POINTS_MESSAGE_HIGHLIGHTS: 'channelPointsMessageHighlights',
-  EMOTE_MENU: 'clickTwitchEmotes',
+  LEGACY_EMOTE_MENU: 'clickTwitchEmotes', // legacy
+  EMOTE_MENU: 'emoteMenu',
   AUTO_THEME_MODE: 'autoThemeMode',
   DARKENED_MODE: 'darkenedMode',
   PRIME_PROMOTIONS: 'primePromotions',
@@ -39,6 +49,7 @@ export const SettingIds = {
   USERNAMES: 'usernames',
   AUTO_LIVE_CHAT_VIEW: 'autoLiveChatView',
   EMOTE_MENU_WIDTH: 'emoteMenuWidth',
+  HYPE_CHAT: 'hypeChat',
 };
 
 export const CategoryTypes = {
@@ -59,12 +70,21 @@ export const DeletedMessageTypes = {
   HIGHLIGHT: 3,
 };
 
+export const EmoteMenuTypes = {
+  NONE: 0,
+  LEGACY_ENABLED: 1,
+  ENABLED: 2,
+};
+
 export const SidebarFlags = {
   // 1 << 0: FRIENDS,
-  FEATURED_CHANNELS: 1 << 1,
+  RECOMMENDED_CHANNELS: 1 << 1,
   // 1 << 2: RECOMMENDED_FRIENDS,
   OFFLINE_FOLLOWED_CHANNELS: 1 << 3,
   AUTO_EXPAND_CHANNELS: 1 << 4,
+  RECENTLY_WATCHED_CHANNELS: 1 << 5,
+  SIMILAR_CHANNELS: 1 << 6,
+  STORIES: 1 << 7,
 };
 
 export const EmoteTypeFlags = {
@@ -111,7 +131,7 @@ export const UsernameFlags = {
 
 export const AutoClaimFlags = {
   DROPS: 1 << 0,
-  MOMENTS: 1 << 1,
+  // MOMENTS: 1 << 1,
 };
 
 export const PageTypes = {
@@ -179,11 +199,13 @@ export const EmoteMenuTips = {
   EMOTE_MENU_FAVORITE_EMOTE: 'emoteMenuTipClosedFavoriteEmote',
   EMOTE_MENU_PREVENT_CLOSE: 'emoteMenuTipClosedPreventClose',
   EMOTE_MENU_HOTKEY: 'emoteMenuTipClosedHotkey',
+  EMOTE_MENU_REPLACE_DEFAULT: 'emoteMenuTipClosedReplaceDefault',
 };
 
 export const SettingDefaultValues = {
   [SettingIds.ANON_CHAT]: false,
   [SettingIds.ANON_CHAT_WHITELISTED_CHANNELS]: [],
+  [SettingIds.ANON_CHAT_BLACKLISTED_CHANNELS]: [],
   [SettingIds.AUTO_THEATRE_MODE]: false,
   [SettingIds.AUTO_JOIN_RAIDS]: true,
   [SettingIds.AUTO_MOD_VIEW]: false,
@@ -200,7 +222,7 @@ export const SettingDefaultValues = {
   [SettingIds.WHISPERS]: true,
   [SettingIds.SHOW_DIRECTORY_LIVE_TAB]: false,
   [SettingIds.CHANNEL_POINTS_MESSAGE_HIGHLIGHTS]: true,
-  [SettingIds.EMOTE_MENU]: false,
+  [SettingIds.EMOTE_MENU]: EmoteMenuTypes.NONE,
   [SettingIds.AUTO_THEME_MODE]: false,
   [SettingIds.DARKENED_MODE]: false,
   [SettingIds.PRIME_PROMOTIONS]: true,
@@ -211,7 +233,14 @@ export const SettingDefaultValues = {
   [SettingIds.EMOTE_AUTOCOMPLETE]: true,
   [SettingIds.BLACKLIST_KEYWORDS]: {},
   [SettingIds.HIGHLIGHT_KEYWORDS]: null,
-  [SettingIds.SIDEBAR]: [SidebarFlags.OFFLINE_FOLLOWED_CHANNELS | SidebarFlags.FEATURED_CHANNELS, 0],
+  [SettingIds.SIDEBAR]: [
+    SidebarFlags.OFFLINE_FOLLOWED_CHANNELS |
+      SidebarFlags.RECOMMENDED_CHANNELS |
+      SidebarFlags.RECENTLY_WATCHED_CHANNELS |
+      SidebarFlags.SIMILAR_CHANNELS |
+      SidebarFlags.STORIES,
+    0,
+  ],
   [SettingIds.EMOTES]: [
     EmoteTypeFlags.BTTV_EMOTES |
       EmoteTypeFlags.ANIMATED_EMOTES |
@@ -243,6 +272,7 @@ export const SettingDefaultValues = {
   [SettingIds.AUTO_CLAIM]: [0, 0],
   [SettingIds.LIVE_CHAT_VIEW]: false,
   [SettingIds.EMOTE_MENU_WIDTH]: 380,
+  [SettingIds.HYPE_CHAT]: true,
 };
 
 export const FlagSettings = [
