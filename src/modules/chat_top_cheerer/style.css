@@ -1,3 +1,4 @@
-.bttv-hide-top-cheerer [data-test-selector='channel-leaderboard-container'] {
+.bttv-hide-top-cheerer .chat-room__content div:has(.bits-leaderboard-expanded-top-three-entry),
+.bttv-hide-top-cheerer .chat-room__content div:has(.channel-leaderboard-header-rotating__users) {
   display: none !important;
 }
